@@ -1,0 +1,115 @@
+Sub CreateAmortizationTable()
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(1)
+    ws.Cells.Clear
+
+    ' Inputs with validation
+    Dim loanAmountStr As String, annualRateStr As String, termYearsStr As String, extraEMIsStr As String
+    Dim loanAmount As Double, annualRate As Double
+    Dim termYears As Integer, extraEMIs As Integer
+
+    loanAmountStr = InputBox("Hey Vishal Enter Loan Amount:")
+    If loanAmountStr = "" Or Not IsNumeric(loanAmountStr) Or Val(loanAmountStr) <= 0 Then Exit Sub
+    loanAmount = Val(loanAmountStr)
+
+    annualRateStr = InputBox("Hey Vishal Enter Annual Interest Rate (%):")
+    If annualRateStr = "" Or Not IsNumeric(annualRateStr) Or Val(annualRateStr) <= 0 Then Exit Sub
+    annualRate = Val(annualRateStr)
+
+    termYearsStr = InputBox("Hey Vishal Enter Loan Term (Years):")
+    If termYearsStr = "" Or Not IsNumeric(termYearsStr) Or Val(termYearsStr) <= 0 Then Exit Sub
+    termYears = Val(termYearsStr)
+
+    extraEMIsStr = InputBox("Hey Vishal Enter Number of Extra EMIs per Year:")
+    If extraEMIsStr = "" Or Not IsNumeric(extraEMIsStr) Or Val(extraEMIsStr) < 0 Then Exit Sub
+    extraEMIs = Val(extraEMIsStr)
+
+    ' Calculations
+    Dim monthlyRate As Double: monthlyRate = annualRate / 12 / 100
+    Dim totalMonths As Integer: totalMonths = termYears * 12
+    Dim emi As Double
+    emi = loanAmount * monthlyRate / (1 - (1 + monthlyRate) ^ -totalMonths)
+
+    ' Header
+    ws.Range("A1:F1").Value = Array("Month", "EMI", "Interest", "Principal", "Extra Payment", "Balance")
+    With ws.Range("A1:F1")
+        .Interior.Color = RGB(0, 51, 102) ' Navy Blue
+        .Font.Color = RGB(255, 255, 255) ' White
+        .Font.Bold = True
+        .HorizontalAlignment = xlCenter
+    End With
+
+    ' Variables
+    Dim balance As Double: balance = loanAmount
+    Dim month As Integer: month = 1
+    Dim row As Integer: row = 2
+    Dim extraPayment As Double
+    Dim totalInterestPaid As Double: totalInterestPaid = 0
+    Dim totalPaid As Double: totalPaid = 0
+
+    Do While balance > 0
+        Dim interest As Double: interest = balance * monthlyRate
+        Dim principal As Double: principal = emi - interest
+        If principal > balance Then principal = balance
+        If emi > balance + interest Then emi = balance + interest
+
+        extraPayment = 0
+        If (month Mod 12 = 0) And (extraEMIs > 0) Then
+            extraPayment = emi * extraEMIs
+            If extraPayment > balance - principal Then extraPayment = balance - principal
+        End If
+
+        balance = balance - principal - extraPayment
+        If balance < 0 Then balance = 0
+
+        ws.Cells(row, 1).Value = month
+        ws.Cells(row, 2).Value = Round(emi, 2)
+        ws.Cells(row, 3).Value = Round(interest, 2)
+        ws.Cells(row, 4).Value = Round(principal, 2)
+        ws.Cells(row, 5).Value = Round(extraPayment, 2)
+        ws.Cells(row, 6).Value = Round(balance, 2)
+
+        totalInterestPaid = totalInterestPaid + interest
+        totalPaid = totalPaid + emi + extraPayment
+
+        month = month + 1
+        row = row + 1
+    Loop
+
+    ' Borders for data range
+    With ws.Range("A2:F" & row - 1).Borders
+        .LineStyle = xlContinuous
+        .Color = vbBlack
+        .Weight = xlThin
+    End With
+
+    ' Summary
+    Dim summaryRow As Integer: summaryRow = row + 1
+    ws.Cells(summaryRow, 1).Value = "Total Interest Paid:"
+    ws.Cells(summaryRow, 2).Value = Round(totalInterestPaid, 2)
+
+    ws.Cells(summaryRow + 1, 1).Value = "Total Duration (Years):"
+    ws.Cells(summaryRow + 1, 2).Value = Round((month - 1) / 12, 2)
+
+    ws.Cells(summaryRow + 2, 1).Value = "Total Amount Paid:"
+    ws.Cells(summaryRow + 2, 2).Value = Round(totalPaid, 2)
+
+    ws.Cells(summaryRow + 3, 1).Value = "Interest as % of Loan:"
+    ws.Cells(summaryRow + 3, 2).Value = Round((totalInterestPaid / loanAmount) * 100, 2) & "%"
+
+    ' Format Summary
+    With ws.Range("A" & summaryRow & ":B" & summaryRow + 3)
+        .Interior.Color = RGB(70, 130, 180) ' Steel Blue
+        .Font.Color = RGB(255, 255, 255)   ' White font
+        .Font.Bold = True
+        .Borders.LineStyle = xlContinuous
+        .Borders.Color = vbBlack
+        .Borders.Weight = xlThin
+    End With
+
+    ' Auto adjust column width
+    ws.Columns("A:F").AutoFit
+
+    MsgBox "Vishal ji, Amortization table created with full formatting and summary!"
+End Sub
+
